@@ -6,5 +6,6 @@ const router = Router();
 router.post("/register", controller.register);
 router.post("/verify-email", controller.verifyEmail);
 router.post("/login", controller.login);
+router.post("/forgot-password", controller.forgotPassword);
 
 export default router;

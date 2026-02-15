@@ -21,3 +21,9 @@ export const generateAuthToken = (
 export const verifyToken = (token: string): JwtPayload => {
   return jwt.verify(token, ENV.JWT_SECRET) as JwtPayload;
 };
+
+export const generatePasswordResetToken = (userId: string): string => {
+  return jwt.sign({ userId, type: "password_reset" }, ENV.JWT_SECRET, {
+    expiresIn: "1h",
+  });
+};

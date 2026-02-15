@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import {
+  forgotPasswordSchema,
   loginSchema,
   registerSchema,
   verifyEmailSchema,
@@ -9,10 +10,12 @@ import bcrypt from "bcrypt";
 import { prisma } from "../../config/db.js";
 import {
   generateAuthToken,
+  generatePasswordResetToken,
   generateVerificationToken,
 } from "../../utils/jwt.js";
 import {
   sendEmailVerification,
+  sendPasswordResetEmail,
   sendWelcomeEmail,
 } from "../../services/email.service.js";
 
@@ -55,7 +58,6 @@ export const register = async (
   } = updatedUser;
 
   res.status(201).json({
-    success: true,
     message:
       "User registered successfully. Please check your email to verify your account.",
     user: userData,
@@ -80,7 +82,6 @@ export const verifyEmail = async (
 
   if (!user) {
     res.status(400).json({
-      success: false,
       message: "Invalid or expired verification token",
     });
     return;
@@ -89,7 +90,7 @@ export const verifyEmail = async (
   if (user.emailVerified) {
     res
       .status(400)
-      .json({ success: false, message: "Email is already verified" });
+      .json({ message: "Email is already verified" });
     return;
   }
 
@@ -107,7 +108,7 @@ export const verifyEmail = async (
 
   res
     .status(200)
-    .json({ success: true, message: "Email verified successfully" });
+    .json({ message: "Email verified successfully" });
 };
 
 export const login = async (
@@ -135,13 +136,12 @@ export const login = async (
   });
 
   if (!user) {
-    res.status(401).json({ success: false, message: "Invalid credentials" });
+    res.status(401).json({ message: "Invalid credentials" });
     return;
   }
 
   if (!user.emailVerified) {
     res.status(403).json({
-      success: false,
       message: "Please verify your email before logging in",
     });
     return;
@@ -150,7 +150,7 @@ export const login = async (
   const isPasswordValid = await bcrypt.compare(password, user.password);
 
   if (!isPasswordValid) {
-    res.status(401).json({ success: false, message: "Invalid credentials" });
+    res.status(401).json({ message: "Invalid credentials" });
     return;
   }
 
@@ -166,8 +166,39 @@ export const login = async (
   const { password: _, ...userData } = user;
 
   res.status(200).json({
-    success: true,
     message: "Login successful",
     user: userData,
+  });
+};
+
+export const forgotPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const { email } = forgotPasswordSchema.parse(req.body);
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (user) {
+    const resetToken = generatePasswordResetToken(user.id);
+    const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetPasswordToken: resetToken,
+        resetPasswordTokenExpiry: resetTokenExpiry,
+      },
+    });
+
+    await sendPasswordResetEmail(email, resetToken, user.username);
+  }
+
+  res.status(200).json({
+    message:
+      "If an account with that email exists, a password reset link has been sent.",
   });
 };
