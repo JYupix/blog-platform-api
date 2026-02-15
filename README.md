@@ -1,64 +1,74 @@
-# Auth Service API
+# Blog Platform API
 
-API de autenticación con Node.js, Express, TypeScript y Prisma.
+🚀 Modern REST API for a blog platform with complete authentication system.
 
-## 🚀 Configuración
+## Tech Stack
 
-### 1. Instalar dependencias
+- **Runtime:** Node.js + TypeScript
+- **Framework:** Express
+- **Database:** PostgreSQL (Neon)
+- **ORM:** Prisma
+- **Authentication:** JWT + HTTP-only Cookies
+- **Email:** Resend
+- **Validation:** Zod
+
+## Features
+
+### ✅ Authentication System (Complete)
+- User registration with email verification
+- Login with JWT
+- Password reset flow
+- Session management with token versioning
+- Protected routes with middleware
+
+### 🚧 Coming Soon
+- Posts CRUD
+- Comments
+- Likes
+- User profiles
+- Roles & permissions
+
+## Installation
 ```bash
+# Clone repository
+git clone git@github.com:JYupix/blog-platform-api.git
+
+# Install dependencies
 npm install
-```
 
-### 2. Configurar variables de entorno
-
-Copia el archivo `.env.example` a `.env` y configura tus valores:
-
-```bash
+# Setup environment variables
 cp .env.example .env
-```
 
-#### Para conectar con Neon:
-1. Ve a [Neon](https://neon.tech)
-2. Crea un nuevo proyecto
-3. Copia tu **connection string** (tiene este formato: `postgresql://usuario:password@tu-proyecto.neon.tech/neondb?sslmode=require`)
-4. Pégalo en tu archivo `.env` en la variable `DATABASE_URL`
+# Run migrations
+npx prisma migrate dev
 
-### 3. Generar cliente de Prisma y ejecutar migraciones
-
-```bash
-npx prisma generate
-npx prisma migrate dev --name init
-```
-
-### 4. Ejecutar el proyecto
-
-**Desarrollo:**
-```bash
+# Start development server
 npm run dev
 ```
 
-**Producción:**
-```bash
-npm run build
-npm start
+## Environment Variables
+```env
+DATABASE_URL=
+JWT_SECRET=
+RESEND_API_KEY=
+FRONTEND_URL=
 ```
 
-## 📁 Estructura
+## API Endpoints
 
-- `/src/modules` - Módulos de la aplicación (auth, users, sessions)
-- `/src/config` - Configuración (db, env)
-- `/src/middlewares` - Middlewares (auth, roles)
-- `/src/utils` - Utilidades (hash, jwt, tokens)
-- `/prisma` - Schema y migraciones de Prisma
+### Auth
+- `POST /api/auth/register` - Register user
+- `GET /api/auth/verify-email` - Verify email
+- `POST /api/auth/login` - Login
+- `POST /api/auth/forgot-password` - Request password reset
+- `POST /api/auth/reset-password` - Reset password
+- `POST /api/auth/logout` - Logout
+- `GET /api/auth/me` - Get current user (protected)
 
-## 🗄️ Base de Datos
+## Author
 
-El proyecto usa **PostgreSQL** con Prisma ORM. Los modelos definidos son:
+**JYupix**
 
-- **User** - Usuarios del sistema
-- **Session** - Sesiones de autenticación
+## License
 
-Para ver tus datos en una interfaz visual:
-```bash
-npx prisma studio
-```
+MIT
