@@ -34,6 +34,8 @@ model User {
   resetPasswordTokenExpiry DateTime?
   lastPasswordChange       DateTime?
 
+  tokenVersion Int @default(0)
+
   lastLogin DateTime?
 
   createdAt DateTime @default(now())

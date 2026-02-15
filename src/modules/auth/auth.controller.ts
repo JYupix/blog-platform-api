@@ -3,9 +3,10 @@ import {
   forgotPasswordSchema,
   loginSchema,
   registerSchema,
+  resetPasswordSchema,
   verifyEmailSchema,
 } from "./auth.schema.js";
-import { setAuthCookie } from "../../utils/cookies.js";
+import { clearAuthCookie, setAuthCookie } from "../../utils/cookies.js";
 import bcrypt from "bcrypt";
 import { prisma } from "../../config/db.js";
 import {
@@ -15,6 +16,7 @@ import {
 } from "../../utils/jwt.js";
 import {
   sendEmailVerification,
+  sendPasswordResetConfirmationEmail,
   sendPasswordResetEmail,
   sendWelcomeEmail,
 } from "../../services/email.service.js";
@@ -88,9 +90,7 @@ export const verifyEmail = async (
   }
 
   if (user.emailVerified) {
-    res
-      .status(400)
-      .json({ message: "Email is already verified" });
+    res.status(400).json({ message: "Email is already verified" });
     return;
   }
 
@@ -106,9 +106,7 @@ export const verifyEmail = async (
 
   await sendWelcomeEmail(user.email, user.username);
 
-  res
-    .status(200)
-    .json({ message: "Email verified successfully" });
+  res.status(200).json({ message: "Email verified successfully" });
 };
 
 export const login = async (
@@ -131,6 +129,7 @@ export const login = async (
       role: true,
       emailVerified: true,
       lastLogin: true,
+      tokenVersion: true,
       createdAt: true,
     },
   });
@@ -154,7 +153,12 @@ export const login = async (
     return;
   }
 
-  const token = generateAuthToken(user.id, user.email, user.role);
+  const token = generateAuthToken(
+    user.id,
+    user.email,
+    user.role,
+    user.tokenVersion,
+  );
 
   await prisma.user.update({
     where: { id: user.id },
@@ -168,6 +172,14 @@ export const login = async (
   res.status(200).json({
     message: "Login successful",
     user: userData,
+  });
+};
+
+export const logout = (req: Request, res: Response): void => {
+  clearAuthCookie(res);
+
+  res.status(200).json({
+    message: "Logout successful",
   });
 };
 
@@ -200,5 +212,51 @@ export const forgotPassword = async (
   res.status(200).json({
     message:
       "If an account with that email exists, a password reset link has been sent.",
+  });
+};
+
+export const resetPassword = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const { token } = verifyEmailSchema.parse(req.query);
+  const { password } = resetPasswordSchema.parse(req.body);
+
+  const user = await prisma.user.findFirst({
+    where: {
+      resetPasswordToken: token,
+      resetPasswordTokenExpiry: {
+        gt: new Date(),
+      },
+    },
+  });
+
+  if (!user) {
+    res.status(400).json({
+      message: "Invalid or expired password reset token",
+    });
+    return;
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      password: hashedPassword,
+      tokenVersion: { increment: 1 },
+      lastPasswordChange: new Date(),
+      resetPasswordToken: null,
+      resetPasswordTokenExpiry: null,
+    },
+  });
+
+  await sendPasswordResetConfirmationEmail(user.email, user.username);
+
+  clearAuthCookie(res);
+
+  res.status(200).json({
+    message: "Password reset successful. Please log in with your new password.",
   });
 };

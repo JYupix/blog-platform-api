@@ -12,10 +12,13 @@ export const generateAuthToken = (
   userId: string,
   email: string,
   role: string,
+  tokenVersion: number,
 ): string => {
-  return jwt.sign({ userId, email, role, type: "auth" }, ENV.JWT_SECRET, {
-    expiresIn: "7d",
-  });
+  return jwt.sign(
+    { userId, email, role, tokenVersion, type: "auth" },
+    ENV.JWT_SECRET,
+    { expiresIn: "7d" },
+  );
 };
 
 export const verifyToken = (token: string): JwtPayload => {

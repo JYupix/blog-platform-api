@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import {
+  passwordChangedEmailTemplate,
   passwordResetEmailTemplate,
   verificationEmailTemplate,
   welcomeEmailTemplate,
@@ -49,5 +50,19 @@ export const sendPasswordResetEmail = async (
     to: email,
     subject: "Password Reset Request",
     html: passwordResetEmailTemplate(resetUrl, username),
+  });
+};
+
+export const sendPasswordResetConfirmationEmail = async (
+  email: string,
+  username: string,
+): Promise<void> => {
+  const loginUrl = `${ENV.FRONTEND_URL}/login`;
+
+  await resend.emails.send({
+    from: "onboarding@resend.dev",
+    to: email,
+    subject: "Password Reset Successful",
+    html: passwordChangedEmailTemplate(loginUrl, username),
   });
 };
