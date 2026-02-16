@@ -10,6 +10,9 @@ const globalForPrisma = globalThis as unknown as {
 // Create a PostgreSQL connection pool
 const pool = new Pool({
   connectionString: ENV.DATABASE_URL,
+  ssl: ENV.NODE_ENV === "production" 
+    ? { rejectUnauthorized: true } 
+    : false,
 });
 
 // Create the adapter
