@@ -7,9 +7,15 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+// Update connection string to use verify-full SSL mode
+const connectionString = ENV.DATABASE_URL?.replace(
+  /sslmode=(require|prefer|verify-ca)/g,
+  'sslmode=verify-full'
+);
+
 // Create a PostgreSQL connection pool
 const pool = new Pool({
-  connectionString: ENV.DATABASE_URL,
+  connectionString,
   ssl: ENV.NODE_ENV === "production" 
     ? { rejectUnauthorized: true } 
     : false,
