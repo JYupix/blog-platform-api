@@ -39,6 +39,7 @@ model User {
 
   posts Post[]
   comments Comment[]
+  likes     Like[] 
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -58,6 +59,7 @@ model Post {
   publishedAt DateTime?
 
   comments Comment[]
+  likes     Like[] 
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -77,4 +79,20 @@ model Comment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId]) // Un usuario solo puede dar like a un post una vez
+  @@index([postId]) // Para optimizar consultas de likes por post
+  @@index([userId]) // Para optimizar consultas de likes por usuario
 }
