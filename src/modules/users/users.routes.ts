@@ -4,6 +4,7 @@ import * as usersController from "./users.controller.js";
 
 const router = Router();
 
+router.get("/", usersController.searchUsers);
 router.get("/me", authenticateToken, usersController.getMyProfile);
 router.patch("/me", authenticateToken, usersController.updateMyProfile);
 router.get("/:username", usersController.getUserProfile);

@@ -3,6 +3,56 @@ import { prisma } from "../../config/db.js";
 import { updateUserSchema } from "./users.schemas.js";
 import { Prisma } from "@prisma/client";
 
+export const searchUsers = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 20;
+  const skip = (page - 1) * limit;
+  const search = req.query.search as string;
+
+  if (!search) {
+    res.status(400).json({ message: "Search query is required" });
+    return;
+  }
+
+  const where = {
+    deletedAt: null,
+    OR: [
+      { username: { contains: search, mode: "insensitive" as const } },
+      { name: { contains: search, mode: "insensitive" as const } },
+    ],
+  };
+
+  const [users, totalUsers] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        profileImage: true,
+      },
+      take: limit,
+      skip: skip,
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  res.status(200).json({
+    users,
+    pagination: {
+      page,
+      limit,
+      total: totalUsers,
+      totalPages: Math.ceil(totalUsers / limit),
+      hasMore: skip + limit < totalUsers,
+    },
+  });
+};
+
 export const getUserProfile = async (
   req: Request,
   res: Response,

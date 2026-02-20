@@ -12,6 +12,18 @@ export const getPosts = async (
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 10;
   const skip = (page - 1) * limit;
+  const search = req.query.search as string;
+
+  const where = {
+    published: true,
+    deletedAt: null,
+    ...(search && {
+      OR: [
+        { title: { contains: search, mode: "insensitive" as const } },
+        { content: { contains: search, mode: "insensitive" as const } },
+      ],
+    }),
+  };
 
   const [posts, totalPosts] = await Promise.all([
     prisma.post.findMany({
@@ -35,9 +47,7 @@ export const getPosts = async (
       take: limit,
       skip: skip,
     }),
-    prisma.post.count({
-      where: { published: true, deletedAt: null },
-    }),
+    prisma.post.count({ where }),
   ]);
 
   res.status(200).json({
