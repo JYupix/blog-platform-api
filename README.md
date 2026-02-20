@@ -9,8 +9,7 @@
 [![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
 [![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white)](https://www.prisma.io/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-
-[Live Demo](#) • [Documentation](#api-endpoints) • [Report Bug](https://github.com/JYupix/blog-platform-api/issues)
+[![Resend](https://img.shields.io/badge/Resend-000000?style=for-the-badge&logo=resend&logoColor=white)](https://resend.com/)
 
 </div>
 
@@ -67,18 +66,14 @@
 
 ## 🚀 Tech Stack
 
-```typescript
-{
-  "runtime": "Node.js",
-  "language": "TypeScript",
-  "framework": "Express.js",
-  "database": "PostgreSQL (Neon)",
-  "orm": "Prisma",
-  "auth": "JWT + HTTP-only Cookies",
-  "email": "Resend",
-  "validation": "Zod"
-}
-```
+- **Runtime:** Node.js
+- **Language:** TypeScript
+- **Framework:** Express.js
+- **Database:** PostgreSQL (Neon)
+- **ORM:** Prisma
+- **Authentication:** JWT + HTTP-only Cookies
+- **Email Service:** Resend
+- **Validation:** Zod
 
 ## 📦 Quick Start
 
@@ -94,14 +89,16 @@ npm install
 cp .env.example .env
 # Edit .env with your credentials
 
-# Run database migrations
-npx prisma migrate dev
+# Run database migrations (uses migrate.ps1 script)
+.\migrate.ps1 -Name "init"
 
 # Start development server
 npm run dev
 ```
 
 **Server runs on:** `http://localhost:3000`
+
+> **Note:** The `migrate.ps1` script automatically runs migrations and generates the Prisma Client in one command.
 
 ## 🔑 Environment Variables
 
@@ -121,7 +118,6 @@ NODE_ENV="development"
 POST   /api/auth/register           # Register new user
 GET    /api/auth/verify-email       # Verify email with token
 POST   /api/auth/login               # Login & get tokens
-POST   /api/auth/refresh             # Refresh access token
 POST   /api/auth/logout              # Logout & clear session
 POST   /api/auth/forgot-password     # Request password reset
 POST   /api/auth/reset-password      # Reset password with token
