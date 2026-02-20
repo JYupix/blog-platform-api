@@ -39,7 +39,10 @@ model User {
 
   posts Post[]
   comments Comment[]
-  likes     Like[] 
+  likes     Like[]
+
+  followers Follow[] @relation("follower")
+  following Follow[] @relation("following")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -92,7 +95,23 @@ model Like {
 
   createdAt DateTime @default(now())
 
-  @@unique([userId, postId]) // Un usuario solo puede dar like a un post una vez
-  @@index([postId]) // Para optimizar consultas de likes por post
-  @@index([userId]) // Para optimizar consultas de likes por usuario
+  @@unique([userId, postId])
+  @@index([postId])
+  @@index([userId])
+}
+
+model Follow {
+  id       String   @id @default(cuid())
+  
+  followerId String
+  follower   User     @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+
+  followingId String
+  following   User     @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
 }

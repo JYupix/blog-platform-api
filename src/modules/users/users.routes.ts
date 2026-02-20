@@ -7,5 +7,8 @@ const router = Router();
 router.get("/me", authenticateToken, usersController.getMyProfile);
 router.patch("/me", authenticateToken, usersController.updateMyProfile);
 router.get("/:username", usersController.getUserProfile);
+router.post("/:username/follow", authenticateToken, usersController.toggleFollowUser);
+router.get("/:username/followers", authenticateToken, usersController.getFollowers);
+router.get("/:username/following", authenticateToken, usersController.getFollowing);
 
 export default router;

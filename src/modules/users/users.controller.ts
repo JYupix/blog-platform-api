@@ -27,33 +27,40 @@ export const getUserProfile = async (
     return;
   }
 
-  const [totalPosts, totalComments, posts] = await Promise.all([
-    prisma.post.count({
-      where: { authorId: user.id, published: true, deletedAt: null },
-    }),
-    prisma.comment.count({
-      where: { authorId: user.id, deletedAt: null },
-    }),
-    prisma.post.findMany({
-      where: { authorId: user.id, published: true, deletedAt: null },
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        publishedAt: true,
-        createdAt: true,
-        _count: {
-          select: {
-            likes: true,
-            comments: {
-              where: { deletedAt: null },
+  const [totalPosts, totalComments, followersCount, followingCount, posts] =
+    await Promise.all([
+      prisma.post.count({
+        where: { authorId: user.id, published: true, deletedAt: null },
+      }),
+      prisma.comment.count({
+        where: { authorId: user.id, deletedAt: null },
+      }),
+      prisma.follow.count({
+        where: { followingId: user.id },
+      }),
+      prisma.follow.count({
+        where: { followerId: user.id },
+      }),
+      prisma.post.findMany({
+        where: { authorId: user.id, published: true, deletedAt: null },
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          publishedAt: true,
+          createdAt: true,
+          _count: {
+            select: {
+              likes: true,
+              comments: {
+                where: { deletedAt: null },
+              },
             },
           },
         },
-      },
-      orderBy: { publishedAt: "desc" },
-    }),
-  ]);
+        orderBy: { publishedAt: "desc" },
+      }),
+    ]);
 
   const totalLikesReceived = posts.reduce(
     (sum, post) => sum + post._count.likes,
@@ -66,6 +73,8 @@ export const getUserProfile = async (
       totalPosts,
       totalComments,
       totalLikesReceived,
+      followersCount,
+      followingCount,
     },
     posts: posts.map((post) => ({
       id: post.id,
@@ -110,7 +119,14 @@ export const getMyProfile = async (
     return;
   }
 
-  const [totalPosts, draftsCount, totalComments, posts] = await Promise.all([
+  const [
+    totalPosts,
+    draftsCount,
+    totalComments,
+    followersCount,
+    followingCount,
+    posts,
+  ] = await Promise.all([
     prisma.post.count({
       where: { authorId: userId, deletedAt: null },
     }),
@@ -119,6 +135,12 @@ export const getMyProfile = async (
     }),
     prisma.comment.count({
       where: { authorId: userId, deletedAt: null },
+    }),
+    prisma.follow.count({
+      where: { followingId: user.id },
+    }),
+    prisma.follow.count({
+      where: { followerId: user.id },
     }),
 
     prisma.post.findMany({
@@ -155,6 +177,8 @@ export const getMyProfile = async (
       draftsCount,
       totalComments,
       totalLikesReceived,
+      followersCount,
+      followingCount,
     },
     posts: posts.map((post) => ({
       id: post.id,
@@ -205,4 +229,133 @@ export const updateMyProfile = async (
   });
 
   res.status(200).json({ user: updatedUser });
+};
+
+export const toggleFollowUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const userId = req.user?.userId as string;
+
+  if (!userId) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  const usernameToFollow = req.params.username as string;
+
+  const userToFollow = await prisma.user.findUnique({
+    where: { username: usernameToFollow, deletedAt: null },
+  });
+
+  if (!userToFollow) {
+    res.status(404).json({ message: "User not found" });
+    return;
+  }
+
+  if (userToFollow.id === userId) {
+    res.status(400).json({ message: "You cannot follow yourself" });
+    return;
+  }
+
+  const existingFollow = await prisma.follow.findUnique({
+    where: {
+      followerId_followingId: {
+        followerId: userId,
+        followingId: userToFollow.id,
+      },
+    },
+  });
+
+  if (existingFollow) {
+    await prisma.follow.delete({
+      where: { id: existingFollow.id },
+    });
+    res.status(200).json({ message: `Unfollowed ${usernameToFollow}` });
+    return;
+  }
+
+  await prisma.follow.create({
+    data: {
+      followerId: userId,
+      followingId: userToFollow.id,
+    },
+  });
+
+  res.status(201).json({ message: `Followed ${usernameToFollow}` });
+};
+
+export const getFollowers = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const username = req.params.username as string;
+
+  const user = await prisma.user.findUnique({
+    where: { username, deletedAt: null },
+  });
+
+  if (!user) {
+    res.status(404).json({ message: "User not found" });
+    return;
+  }
+
+  const followers = await prisma.follow.findMany({
+    where: { followingId: user.id },
+    select: {
+      follower: {
+        select: {
+          id: true,
+          username: true,
+          name: true,
+          profileImage: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  res.status(200).json({
+    followers: followers.map((f) => f.follower),
+    count: followers.length,
+  });
+};
+
+export const getFollowing = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  const username = req.params.username as string;
+
+  const user = await prisma.user.findUnique({
+    where: { username, deletedAt: null },
+  });
+
+  if (!user) {
+    res.status(404).json({ message: "User not found" });
+    return;
+  }
+
+  const following = await prisma.follow.findMany({
+    where: { followerId: user.id },
+    select: {
+      following: {
+        select: {
+          id: true,
+          username: true,
+          name: true,
+          profileImage: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  res.status(200).json({
+    following: following.map((f) => f.following),
+    count: following.length,
+  });
 };
