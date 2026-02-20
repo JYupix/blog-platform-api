@@ -8,6 +8,9 @@ export const getCommentsByPost = async (
   next: NextFunction,
 ) => {
   const id = req.params.id as string;
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 20;
+  const skip = (page - 1) * limit;
 
   const post = await prisma.post.findUnique({
     where: { id, published: true, deletedAt: null },
@@ -18,28 +21,41 @@ export const getCommentsByPost = async (
     return;
   }
 
-  const comments = await prisma.comment.findMany({
-    where: { postId: id, deletedAt: null },
-    select: {
-      id: true,
-      content: true,
-      createdAt: true,
-      updatedAt: true,
-      author: {
-        select: {
-          id: true,
-          username: true,
-          name: true,
-          profileImage: true,
+  const [comments, totalComments] = await Promise.all([
+    prisma.comment.findMany({
+      where: { postId: id, deletedAt: null },
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
+        updatedAt: true,
+        author: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+            profileImage: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: skip,
+    }),
+    prisma.comment.count({
+      where: { postId: id, deletedAt: null },
+    }),
+  ]);
 
   res.status(200).json({
     comments,
-    count: comments.length,
+    pagination: {
+      page,
+      limit,
+      total: totalComments,
+      totalPages: Math.ceil(totalComments / limit),
+      hasMore: skip + limit < totalComments,
+    },
   });
 };
 
@@ -97,33 +113,49 @@ export const getMyComments = async (
   next: NextFunction,
 ) => {
   const authorId = req.user?.userId as string;
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 20;
+  const skip = (page - 1) * limit;
 
   if (!authorId) {
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
 
-  const comments = await prisma.comment.findMany({
-    where: { authorId, deletedAt: null },
-    select: {
-      id: true,
-      content: true,
-      createdAt: true,
-      updatedAt: true,
-      post: {
-        select: {
-          id: true,
-          title: true,
-          slug: true,
+  const [comments, totalMyComments] = await Promise.all([
+    prisma.comment.findMany({
+      where: { authorId, deletedAt: null },
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
+        updatedAt: true,
+        post: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: skip,
+    }),
+    prisma.comment.count({
+      where: { authorId, deletedAt: null },
+    }),
+  ]);
 
   res.status(200).json({
     comments,
-    count: comments.length,
+    pagination: {
+      page,
+      limit,
+      total: totalMyComments,
+      totalPages: Math.ceil(totalMyComments / limit),
+      hasMore: skip + limit < totalMyComments,
+    },
   });
 };
 

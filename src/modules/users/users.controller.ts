@@ -9,6 +9,9 @@ export const getUserProfile = async (
   next: NextFunction,
 ): Promise<void> => {
   const username = req.params.username as string;
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 10;
+  const skip = (page - 1) * limit;
 
   const user = await prisma.user.findUnique({
     where: { username, deletedAt: null },
@@ -27,40 +30,51 @@ export const getUserProfile = async (
     return;
   }
 
-  const [totalPosts, totalComments, followersCount, followingCount, posts] =
-    await Promise.all([
-      prisma.post.count({
-        where: { authorId: user.id, published: true, deletedAt: null },
-      }),
-      prisma.comment.count({
-        where: { authorId: user.id, deletedAt: null },
-      }),
-      prisma.follow.count({
-        where: { followingId: user.id },
-      }),
-      prisma.follow.count({
-        where: { followerId: user.id },
-      }),
-      prisma.post.findMany({
-        where: { authorId: user.id, published: true, deletedAt: null },
-        select: {
-          id: true,
-          title: true,
-          slug: true,
-          publishedAt: true,
-          createdAt: true,
-          _count: {
-            select: {
-              likes: true,
-              comments: {
-                where: { deletedAt: null },
-              },
+  const [
+    totalPosts,
+    totalComments,
+    followersCount,
+    followingCount,
+    posts,
+    totalUserPosts,
+  ] = await Promise.all([
+    prisma.post.count({
+      where: { authorId: user.id, published: true, deletedAt: null },
+    }),
+    prisma.comment.count({
+      where: { authorId: user.id, deletedAt: null },
+    }),
+    prisma.follow.count({
+      where: { followingId: user.id },
+    }),
+    prisma.follow.count({
+      where: { followerId: user.id },
+    }),
+    prisma.post.findMany({
+      where: { authorId: user.id, published: true, deletedAt: null },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        publishedAt: true,
+        createdAt: true,
+        _count: {
+          select: {
+            likes: true,
+            comments: {
+              where: { deletedAt: null },
             },
           },
         },
-        orderBy: { publishedAt: "desc" },
-      }),
-    ]);
+      },
+      orderBy: { publishedAt: "desc" },
+      take: limit,
+      skip: skip,
+    }),
+    prisma.post.count({
+      where: { authorId: user.id, published: true, deletedAt: null },
+    }),
+  ]);
 
   const totalLikesReceived = posts.reduce(
     (sum, post) => sum + post._count.likes,
@@ -85,6 +99,13 @@ export const getUserProfile = async (
       likesCount: post._count.likes,
       commentsCount: post._count.comments,
     })),
+    pagination: {
+      page,
+      limit,
+      total: totalUserPosts,
+      totalPages: Math.ceil(totalUserPosts / limit),
+      hasMore: skip + limit < totalUserPosts,
+    },
   });
 };
 
@@ -94,6 +115,9 @@ export const getMyProfile = async (
   next: NextFunction,
 ): Promise<void> => {
   const userId = req.user?.userId;
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 10;
+  const skip = (page - 1) * limit;
 
   if (!userId) {
     res.status(401).json({ message: "Unauthorized" });
@@ -126,6 +150,7 @@ export const getMyProfile = async (
     followersCount,
     followingCount,
     posts,
+    totalMyPosts,
   ] = await Promise.all([
     prisma.post.count({
       where: { authorId: userId, deletedAt: null },
@@ -162,6 +187,11 @@ export const getMyProfile = async (
         },
       },
       orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: skip,
+    }),
+    prisma.post.count({
+      where: { authorId: userId, deletedAt: null },
     }),
   ]);
 
@@ -190,6 +220,13 @@ export const getMyProfile = async (
       likesCount: post._count.likes,
       commentsCount: post._count.comments,
     })),
+    pagination: {
+      page,
+      limit,
+      total: totalMyPosts,
+      totalPages: Math.ceil(totalMyPosts / limit),
+      hasMore: skip + limit < totalMyPosts,
+    },
   });
 };
 
@@ -292,6 +329,9 @@ export const getFollowers = async (
   next: NextFunction,
 ): Promise<void> => {
   const username = req.params.username as string;
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 20;
+  const skip = (page - 1) * limit;
 
   const user = await prisma.user.findUnique({
     where: { username, deletedAt: null },
@@ -302,24 +342,37 @@ export const getFollowers = async (
     return;
   }
 
-  const followers = await prisma.follow.findMany({
-    where: { followingId: user.id },
-    select: {
-      follower: {
-        select: {
-          id: true,
-          username: true,
-          name: true,
-          profileImage: true,
+  const [followers, totalFollowers] = await Promise.all([
+    prisma.follow.findMany({
+      where: { followingId: user.id },
+      select: {
+        follower: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+            profileImage: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: skip,
+    }),
+    prisma.follow.count({
+      where: { followingId: user.id },
+    }),
+  ]);
 
-  res.status(200).json({
+  res.json({
     followers: followers.map((f) => f.follower),
-    count: followers.length,
+    pagination: {
+      page,
+      limit,
+      total: totalFollowers,
+      totalPages: Math.ceil(totalFollowers / limit),
+      hasMore: skip + limit < totalFollowers,
+    },
   });
 };
 
@@ -329,6 +382,9 @@ export const getFollowing = async (
   next: NextFunction,
 ): Promise<void> => {
   const username = req.params.username as string;
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 20;
+  const skip = (page - 1) * limit;
 
   const user = await prisma.user.findUnique({
     where: { username, deletedAt: null },
@@ -339,23 +395,36 @@ export const getFollowing = async (
     return;
   }
 
-  const following = await prisma.follow.findMany({
-    where: { followerId: user.id },
-    select: {
-      following: {
-        select: {
-          id: true,
-          username: true,
-          name: true,
-          profileImage: true,
+  const [following, totalFollowing] = await Promise.all([
+    prisma.follow.findMany({
+      where: { followerId: user.id },
+      select: {
+        following: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+            profileImage: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: skip,
+    }),
+    prisma.follow.count({
+      where: { followerId: user.id },
+    }),
+  ]);
 
   res.status(200).json({
     following: following.map((f) => f.following),
-    count: following.length,
+    pagination: {
+      page,
+      limit,
+      total: totalFollowing,
+      totalPages: Math.ceil(totalFollowing / limit),
+      hasMore: skip + limit < totalFollowing,
+    },
   });
 };

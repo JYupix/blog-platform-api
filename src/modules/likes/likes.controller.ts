@@ -57,6 +57,9 @@ export const getLikesForPost = async (
   next: NextFunction,
 ): Promise<void> => {
   const postId = req.params.id as string;
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 20;
+  const skip = (page - 1) * limit;
 
   const post = await prisma.post.findUnique({
     where: { id: postId, published: true, deletedAt: null },
@@ -67,22 +70,36 @@ export const getLikesForPost = async (
     return;
   }
 
-  const likes = await prisma.like.findMany({
-    where: { postId },
-    select: {
-      user: {
-        select: {
-          id: true,
-          username: true,
-          name: true,
-          profileImage: true,
+  const [likes, totalLikes] = await Promise.all([
+    prisma.like.findMany({
+      where: { postId },
+      select: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+            profileImage: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: skip,
+    }),
+    prisma.like.count({
+      where: { postId },
+    }),
+  ]);
 
-  res
-    .status(200)
-    .json({ likes: likes.map((like) => like.user), totalLikes: likes.length });
+  res.status(200).json({
+    likes: likes.map((like) => like.user),
+    pagination: {
+      page,
+      limit,
+      total: totalLikes,
+      totalPages: Math.ceil(totalLikes / limit),
+      hasMore: skip + limit < totalLikes,
+    },
+  });
 };
