@@ -119,6 +119,71 @@ npm run dev
 
 ---
 
+## 🐳 Docker
+
+This project includes Docker setups for both **development** and **production-like** local runs:
+
+- `Dockerfile` with multi-stage build (`dev`, `build`, `runtime`)
+- `docker-compose.dev.yml` for hot reload development
+- `docker-compose.yml` for production-like runtime
+
+### Requirements
+
+- Docker Desktop (Windows/macOS) or Docker Engine + Compose (Linux)
+
+### Development with hot reload
+
+```bash
+# 1) Start only PostgreSQL
+docker compose -f docker-compose.dev.yml up -d db
+
+# 2) Run Prisma migrations from host (PowerShell)
+.\migrate.ps1 -Name "init_docker_local"
+
+# 3) Start API in dev mode (watch)
+docker compose -f docker-compose.dev.yml up -d api
+
+# 4) Follow logs
+docker compose -f docker-compose.dev.yml logs -f api
+```
+
+The dev compose mounts your source code as a volume and runs `npm run dev` inside the container.
+
+### Production-like local run
+
+```bash
+# Build and start containers
+docker compose up -d --build
+
+# Run migrations from host (PowerShell)
+.\migrate.ps1 -Name "prod_like_schema_sync"
+
+# Follow API logs
+docker compose logs -f api
+```
+
+This uses the `runtime` target from the `Dockerfile` (compiled TypeScript in `dist`).
+
+### Useful Docker commands
+
+```bash
+# Stop containers
+docker compose down
+
+# Stop containers and remove volume data
+docker compose down -v
+
+# Rebuild API image only
+docker compose build api
+```
+
+### Notes about DATABASE_URL
+
+- In Docker Compose, `DATABASE_URL` points to the internal service hostname `db`.
+- For non-Docker local development, keep using your regular `.env` value.
+
+---
+
 ## 🔑 Environment Variables
 
 ```env
