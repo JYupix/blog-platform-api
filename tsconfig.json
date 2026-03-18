@@ -1,21 +1,22 @@
 {
   "compilerOptions": {
-    "rootDir": "./src",
+    "rootDir": ".",
     "outDir": "./dist",
 
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "target": "ES2023",
     "lib": ["ES2023"],
-    "types": ["node"],
+    "types": ["node", "jest"],
 
     "strict": true,
+    "isolatedModules": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
 
     "sourceMap": true,
     "resolveJsonModule": true
   },
-  "include": ["src"],
+  "include": ["src", "tests"],
   "exclude": ["node_modules", "dist"]
 }
