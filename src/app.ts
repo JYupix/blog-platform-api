@@ -48,7 +48,9 @@ app.use(cors({
 app.use(express.json());
 app.use(cookiesParser());
 app.use(generalLimiter);
-app.use(requestLogger);
+if (ENV.NODE_ENV !== "test") {
+  app.use(requestLogger);
+}
 
 // Swagger docs (dev only)
 if (process.env.NODE_ENV !== "production") {
