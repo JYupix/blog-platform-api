@@ -1,0 +1,9 @@
+process.env.NODE_ENV = 'test';
+process.env.PORT = '3001';
+process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://user:pass@localhost:5432/test_db';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test_jwt_secret_123456';
+process.env.RESEND_API_KEY = process.env.RESEND_API_KEY || 'test_resend_key';
+process.env.FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+process.env.CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || 'test_cloud';
+process.env.CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || 'test_key';
+process.env.CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET || 'test_secret';
